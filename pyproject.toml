@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mergemonster"
+version = "0.1.0"
+description = "A local-first workbench for constructing precise AI-ready repository context."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = "MIT AND Apache-2.0"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [{ name = "MergeMonster contributors" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: MacOS X",
+  "Environment :: No Input/Output (Daemon)",
+  "Intended Audience :: Developers",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development",
+  "Topic :: Text Processing",
+]
+dependencies = [
+  "fastapi>=0.100,<1",
+  "uvicorn>=0.20,<1",
+  "pydantic>=2,<3",
+  "PyYAML>=6,<7",
+  "tiktoken>=0.7,<1",
+]
+
+[project.optional-dependencies]
+desktop = ["pywebview>=5,<7"]
+providers = ["openai>=1.66,<2"]
+dev = ["build>=1.2,<2", "pytest>=8.4,<9", "ruff>=0.11,<1", "httpx>=0.27,<1"]
+
+[project.scripts]
+mergemonster = "codemerge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/velhud/mergemonster-oss"
+Repository = "https://github.com/velhud/mergemonster-oss"
+Issues = "https://github.com/velhud/mergemonster-oss/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["codemerge*"]
+
+[tool.setuptools.package-data]
+"codemerge.core" = ["data/*.tiktoken.gz"]
+"codemerge.jsui" = ["static/*.html", "static/*.js", "static/*.css"]
+"codemerge.summarizer" = ["prompts/*.md"]
+"codemerge.prune" = ["assets/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["F821"]

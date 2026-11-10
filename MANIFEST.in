@@ -1,0 +1,8 @@
+include LICENSE THIRD_PARTY_NOTICES.md SECURITY.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md AGENTS.md
+include Makefile pytest.ini
+recursive-include LICENSES *.txt
+recursive-include docs *.md
+recursive-include examples *.py *.md *.json *.toml *.yml *.ts *.go go.mod
+recursive-include tests *.py
+recursive-include tools *.py
+global-exclude *.py[cod] .DS_Store

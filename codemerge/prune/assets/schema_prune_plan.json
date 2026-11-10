@@ -1,0 +1,22 @@
+{
+  "name": "prune_plan",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "deletions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "file_path": {"type": "string"},
+            "defs": {"type": "array", "items": {"type": "string"}}
+          },
+          "required": ["file_path", "defs"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["deletions"],
+    "additionalProperties": false
+  }
+}

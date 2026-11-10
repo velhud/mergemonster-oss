@@ -1,0 +1,33 @@
+{
+  "name": "stub_suggestions",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "stubs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "signature": {"type": "string"},
+            "file_hint": {"type": "string"}
+          },
+          "required": ["name", "signature", "file_hint"]
+        }
+      },
+      "tests": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "assertion": {"type": "string"}
+          },
+          "required": ["name", "assertion"]
+        }
+      }
+    },
+    "required": ["stubs", "tests"],
+    "additionalProperties": false
+  }
+}

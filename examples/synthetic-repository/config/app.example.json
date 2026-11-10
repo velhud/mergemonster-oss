@@ -1,0 +1,6 @@
+{
+  "summary_default_mode": "CODE",
+  "summary_change_strategy": "sha256",
+  "excluded_dirs": [".git", "generated", "vendor"],
+  "groq_summary_model": "openai/gpt-oss-20b"
+}

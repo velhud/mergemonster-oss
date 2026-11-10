@@ -1,0 +1,22 @@
+{
+  "name": "span_pick",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "keep": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "file_path": {"type": "string"},
+            "qualname": {"type": "string"}
+          },
+          "required": ["file_path", "qualname"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["keep"],
+    "additionalProperties": false
+  }
+}

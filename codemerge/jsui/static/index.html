@@ -1,0 +1,1362 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MergeMonster</title>
+  <link rel="stylesheet" href="/static/styles.css?v=0.1.0" />
+</head>
+
+<body>
+  <div id="banner" class="banner" style="display:none" role="status" aria-live="polite"></div>
+  <div id="overlay" class="overlay" style="display:none" role="status" aria-live="polite" aria-busy="false">
+    <div class="spinner">
+      <span id="overlay_msg">Working...</span>
+      <button id="overlay_cancel" style="display:none; margin-left:10px;">Hide</button>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="preview_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="preview_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="preview_title" class="modal_title">Preview</div>
+          <div id="preview_meta" class="muted"></div>
+        </div>
+        <div class="row">
+          <button id="preview_copy" type="button">Copy All</button>
+          <button id="preview_save" type="button">Save...</button>
+          <button id="preview_open_external" type="button" title="Open in your OS default editor">Open</button>
+          <button id="preview_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <pre id="preview_text" tabindex="0">No preview yet.</pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="error_modal" class="modal error" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="error_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="error_title" class="modal_title">Error</div>
+        </div>
+        <div class="row">
+          <button id="error_copy" type="button">Copy Error</button>
+          <button id="error_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <pre id="error_text"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="overwrite_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="overwrite_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="overwrite_title" class="modal_title">Output File Exists</div>
+          <div class="muted">Choose what to do with the existing output file.</div>
+        </div>
+        <div class="row">
+          <button id="overwrite_rename" type="button">Rename</button>
+          <button id="overwrite_confirm" type="button">Overwrite</button>
+          <button id="overwrite_cancel" type="button">Cancel</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <div id="overwrite_path" class="code-font" style="padding:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="diagnostics_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="diagnostics_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="diagnostics_title" class="modal_title">Diagnostics</div>
+          <div id="diagnostics_meta" class="muted"></div>
+        </div>
+        <div class="row">
+          <button id="diagnostics_copy" type="button">Copy</button>
+          <button id="diagnostics_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <pre id="diagnostics_text"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="prune_summary_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="prune_summary_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="prune_summary_title" class="modal_title">Prune Summary</div>
+          <div id="prune_summary_meta" class="muted"></div>
+        </div>
+        <div class="row">
+          <button id="prune_summary_open" type="button">Open Output</button>
+          <button id="prune_summary_copy" type="button">Copy Path</button>
+          <button id="prune_summary_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <div class="prune-summary-grid">
+          <div class="prune-summary-card">
+            <div class="prune-summary-title">Pack A (kept)</div>
+            <div class="prune-summary-row"><span>Definitions</span><span id="prune_kept_defs">0</span></div>
+            <div class="prune-summary-row"><span>Files</span><span id="prune_kept_files">0</span></div>
+            <div class="prune-summary-row"><span>Tokens</span><span id="prune_kept_tokens">0</span></div>
+          </div>
+          <div class="prune-summary-card">
+            <div class="prune-summary-title">Overflow</div>
+            <div class="prune-summary-row"><span>Has overflow</span><span id="prune_overflow_flag">No</span></div>
+            <div class="prune-summary-row"><span>Definitions</span><span id="prune_overflow_defs">0</span></div>
+            <div class="prune-summary-row"><span>Files</span><span id="prune_overflow_files">0</span></div>
+            <div class="prune-summary-row"><span>Tokens</span><span id="prune_overflow_tokens">0</span></div>
+          </div>
+        </div>
+        <div id="prune_summary_extra" class="prune-summary-extra" style="display:none">
+          <div class="prune-summary-title">Stub Suggestions</div>
+          <pre id="prune_stub_suggestions" class="code-font"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="logs_modal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="logs_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="logs_title" class="modal_title">Summarizer Logs</div>
+          <div id="logs_meta" class="muted"></div>
+        </div>
+        <div class="row">
+          <label class="chk-label small">Tail <input id="logs_tail" type="number" min="100" value="1000"
+              style="width:80px"></label>
+          <button id="logs_refresh" type="button">Refresh</button>
+          <button id="logs_copy" type="button">Copy</button>
+          <button id="logs_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <pre id="logs_text"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="jobs_modal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="jobs_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div id="jobs_title" class="modal_title">Jobs</div>
+        <button id="jobs_close" type="button" class="btn-icon" title="Close">×</button>
+      </div>
+      <div class="modal_body">
+        <pre id="jobs_text" tabindex="0">No jobs loaded.</pre>
+      </div>
+      <div class="modal_footer">
+        <button id="jobs_refresh" type="button">Refresh</button>
+        <div class="spacer"></div>
+        <button id="jobs_done" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="keep_only_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="keep_only_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="keep_only_title" class="modal_title">Keep Only from List</div>
+          <div class="muted">Paste paths (relative or absolute), one per line. Uses the current scan root.</div>
+        </div>
+        <div class="row">
+          <button id="keep_only_cancel" type="button">Cancel</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <div id="keep_only_view_input">
+          <textarea id="keep_only_input" rows="12" style="width:100%"
+            placeholder="src/main.py\nsrc/utils.py:50\nREADME.md"></textarea>
+          <div class="row" style="margin-top:10px; flex-wrap:wrap; gap:12px;">
+            <label><input id="keep_only_opt_smart" type="checkbox" checked> Smart cleanup</label>
+            <label><input id="keep_only_opt_autocorrect" type="checkbox" checked> Autocorrect typos</label>
+            <label><input id="keep_only_opt_llm" type="checkbox"> LLM assist (beta)</label>
+            <label><input id="keep_only_opt_dir_prefix" type="checkbox"> Treat directories as prefixes</label>
+          </div>
+        </div>
+        <div id="keep_only_view_preview" style="display:none">
+          <div id="keep_only_preview_summary" class="muted"></div>
+          <div class="tablewrap keep-only-tablewrap">
+            <table id="keep_only_preview_table">
+              <thead>
+                <tr>
+                  <th>Input</th>
+                  <th>Resolved</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="row modal_footer">
+          <button id="keep_only_back" type="button" style="display:none">Back</button>
+          <div class="row" style="margin-left:auto">
+            <button id="keep_only_preview" type="button">Preview</button>
+            <button id="keep_only_copy" type="button" style="display:none">Copy cleaned list</button>
+            <button id="keep_only_apply" type="button" style="display:none">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="manual_picker_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="manual_picker_title">
+    <div class="modal_inner manual-picker resizable">
+      <div class="modal_header">
+        <div>
+          <div id="manual_picker_title" class="modal_title">Add files/folders...</div>
+          <div id="manual_picker_hint" class="muted">Browse the filesystem and add multiple paths at once.</div>
+        </div>
+        <div class="row">
+          <button id="manual_picker_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body manual-picker-body">
+        <div class="manual-pane">
+          <div class="row manual-toolbar">
+            <button id="manual_up" type="button">Up</button>
+            <button id="manual_refresh" type="button">Refresh</button>
+            <input id="manual_search" type="text" placeholder="Search (name or glob)">
+            <label class="chk-label"><input id="manual_show_hidden" type="checkbox"> Show hidden</label>
+          </div>
+          <div id="manual_path" class="muted"></div>
+          <div id="manual_list" class="manual-list" tabindex="0"></div>
+        </div>
+        <div class="manual-selection">
+          <div class="manual-selection-title">Selection</div>
+          <div id="manual_selected_list" class="manual-selected" tabindex="0"></div>
+          <div class="row mt-2">
+            <button id="manual_add_files" type="button">Add files...</button>
+            <button id="manual_add_folder" type="button">Add folder...</button>
+          </div>
+          <div class="row mt-2">
+            <button id="manual_remove" type="button">Remove</button>
+            <button id="manual_clear" type="button">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal_footer">
+        <label class="chk-label"><input id="manual_recurse" type="checkbox" checked> Recurse into folders</label>
+        <label class="chk-label"><input id="manual_respect_excludes" type="checkbox" checked> Respect excludes</label>
+        <label class="chk-label">Max depth <input id="manual_max_depth" type="number" min="0" step="1" value="0"
+            style="width:80px"></label>
+        <div class="spacer"></div>
+        <button id="manual_cancel" type="button">Cancel</button>
+        <button id="manual_confirm" type="button" class="btn-primary">Add to list</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="why_modal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="why_title">
+    <div class="modal_inner">
+      <div class="modal_header">
+        <div>
+          <div id="why_title" class="modal_title">File Diagnostics</div>
+          <div id="why_status" class="muted"></div>
+        </div>
+        <div class="row">
+          <button id="why_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <div class="why_head">
+          <div id="why_file_name" class="why_file_name"></div>
+          <div id="why_file_path" class="muted why_file_path"></div>
+        </div>
+        <div class="why_meta_grid">
+          <div class="why_meta_item">
+            <div class="why_meta_label">Size</div>
+            <div id="why_meta_size" class="why_meta_value"></div>
+          </div>
+          <div class="why_meta_item">
+            <div class="why_meta_label">Tokens</div>
+            <div id="why_meta_tokens" class="why_meta_value"></div>
+          </div>
+          <div class="why_meta_item">
+            <div class="why_meta_label">Token status</div>
+            <div id="why_meta_readable" class="why_meta_value"></div>
+          </div>
+          <div class="why_meta_item">
+            <div class="why_meta_label">Category</div>
+            <div id="why_meta_category" class="why_meta_value"></div>
+          </div>
+          <div class="why_meta_item">
+            <div class="why_meta_label">Modified</div>
+            <div id="why_meta_mtime" class="why_meta_value"></div>
+          </div>
+        </div>
+        <div id="why_reasons" class="why_reasons"></div>
+        <div class="row modal_footer" style="flex-wrap:wrap">
+          <button id="why_action_enable_category" type="button">Enable category</button>
+          <button id="why_action_clear_pattern" type="button">Clear pattern</button>
+          <button id="why_action_reset_ranges" type="button">Reset ranges</button>
+          <button id="why_action_reset_dates" type="button">Reset dates to default</button>
+          <button id="why_action_clear_dates" type="button">Clear dates</button>
+          <button id="why_action_add_always" type="button">Add to Always-Include</button>
+          <button id="why_action_exclude" type="button">Add to Custom Excludes</button>
+          <button id="why_action_reset" type="button">Reset Filters</button>
+          <button id="why_action_open" type="button">Open File</button>
+          <button id="why_action_close" type="button" style="margin-left:auto">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="categories_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="cats_title">
+    <div class="modal_inner resizable">
+      <div class="modal_header">
+        <div>
+          <div id="cats_title" class="modal_title">Categories &amp; Types</div>
+          <div class="muted">Controls what appears in the list and what gets scanned.</div>
+        </div>
+        <div class="row">
+          <button id="cats_apply" type="button">Apply</button>
+          <button id="cats_close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modal_body">
+        <div class="filters">
+          <div class="col">
+            <div><strong>Presets</strong></div>
+            <div class="preset-row">
+              <button type="button" class="preset" data-preset="ONLY_CODE">Only Code</button>
+              <button type="button" class="preset" data-preset="NO_FRONT">No Front</button>
+              <button type="button" class="preset" data-preset="NO_DOCS">No Docs</button>
+              <button type="button" class="preset" data-preset="DOCS_ONLY">Docs Only</button>
+              <button type="button" class="preset" data-preset="NO_CONFIG">No Config</button>
+              <button type="button" class="preset" data-preset="NO_ASSETS">No Assets</button>
+            </div>
+            <div><strong>Categories</strong></div>
+            <label><input type="checkbox" class="f_cat" value="BACKEND" checked> BACKEND</label>
+            <label><input type="checkbox" class="f_cat" value="FRONTEND" checked> FRONTEND</label>
+            <label><input type="checkbox" class="f_cat" value="DOCS" checked> DOCS</label>
+            <label><input type="checkbox" class="f_cat" value="CONFIG" checked> CONFIG</label>
+            <label><input type="checkbox" class="f_cat" value="ASSETS" checked> ASSETS</label>
+            <label><input type="checkbox" class="f_cat" value="BINARY" checked> BINARY</label>
+            <label class="chk-label"><input id="f_always_docs" type="checkbox" checked> Always include docs</label>
+          </div>
+          <div class="col">
+            <div><strong>File Types</strong></div>
+            <div id="f_types"></div>
+            <label class="chk-label"><input id="f_ignore_persisted" type="checkbox"> Ignore persisted excludes</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="settings_title">
+    <div class="modal_inner settings-modal-inner resizable">
+      <div class="modal_header">
+        <div id="settings_title" class="modal_title">Settings</div>
+        <button type="button" class="btn-icon" data-settings-action="close" title="Close">×</button>
+      </div>
+
+      <div class="modal_body settings-layout">
+        <div class="tabs-nav">
+          <button type="button" class="tab-btn active" data-settings-tab="tab_types">Types</button>
+          <button type="button" class="tab-btn" data-settings-tab="tab_filters">Filters</button>
+          <button type="button" class="tab-btn" data-settings-tab="tab_ui">UI</button>
+          <button type="button" class="tab-btn" data-settings-tab="tab_output">Output &amp; AI</button>
+          <button type="button" class="tab-btn" data-settings-tab="tab_tools">Tools</button>
+        </div>
+
+        <div class="tabs-content">
+          <div id="tab_types" class="tab-pane active">
+            <div class="types-section">
+              <div class="types-section-header">
+                <h3>Presets</h3>
+                <div class="muted">Apply or manage saved groups of file types.</div>
+              </div>
+              <div class="types-presets-grid">
+                <div class="types-preset-block">
+                  <div class="muted types-subtitle">Quick Actions</div>
+                  <div class="row types-preset-actions">
+                    <button id="btn_ios_preset" type="button">iOS Preset</button>
+                    <button id="btn_diag" type="button">Diagnostics...</button>
+                  </div>
+                </div>
+                <div class="types-preset-block">
+                  <div class="types-preset-select">
+                    <label class="muted" for="user_preset_list">Preset:</label>
+                    <select id="user_preset_list" title="User presets"></select>
+                  </div>
+                  <div class="types-preset-actions">
+                    <button id="btn_load_preset" type="button">Load</button>
+                    <button id="btn_save_preset" type="button">Save</button>
+                    <button id="btn_del_preset" type="button">Delete</button>
+                    <button id="btn_export_preset" type="button">Export</button>
+                    <button id="btn_import_preset" type="button">Import</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="types-section">
+              <div class="types-section-header">
+                <h3>Quick Groups</h3>
+                <div class="muted">Toggle common bundles of categories.</div>
+              </div>
+              <div class="group-pills types-group-pills">
+                <button type="button" class="pill" data-group="All">All</button>
+                <button type="button" class="pill" data-group="Code">Code</button>
+                <button type="button" class="pill" data-group="Markup">Markup</button>
+                <button type="button" class="pill" data-group="Data">Data</button>
+                <button type="button" class="pill" data-group="Binary">Binary</button>
+              </div>
+            </div>
+
+            <div class="types-section">
+              <div class="types-section-header">
+                <h3>Extension Mapping</h3>
+                <div class="muted">Map specific extensions to categories, or edit JSON directly.</div>
+              </div>
+              <label class="types-block-label" for="s_ext_map">Custom Extension Map (JSON):</label>
+              <textarea id="s_ext_map" rows="6" class="code-font" placeholder='{ \"swift\": \"BACKEND\" }'></textarea>
+              <div class="ext-map-helper types-ext-map-helper">
+                <div class="ext-map-list">
+                  <label class="types-block-label" for="ext_map_list">Current mappings:</label>
+                  <select id="ext_map_list" size="6" class="code-font"></select>
+                </div>
+                <div class="ext-map-editor">
+                  <label class="muted" for="ext_map_ext">Extension:</label>
+                  <input id="ext_map_ext" type="text" placeholder="swift">
+                  <label class="muted" for="ext_map_cat">Category:</label>
+                  <select id="ext_map_cat">
+                    <option value="BACKEND">BACKEND</option>
+                    <option value="FRONTEND">FRONTEND</option>
+                    <option value="DOCS">DOCS</option>
+                    <option value="CONFIG">CONFIG</option>
+                    <option value="ASSETS">ASSETS</option>
+                    <option value="BINARY">BINARY</option>
+                  </select>
+                  <div class="row mt-2 types-inline-actions">
+                    <button id="ext_map_add" type="button">Add/Update</button>
+                    <button id="ext_map_remove" type="button">Remove</button>
+                    <button id="ext_map_reload" type="button">Reload from JSON</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab_filters" class="tab-pane">
+            <div class="filters-layout">
+              <div class="filters-card filters-card-wide">
+                <div class="filters-card-header">
+                  <h3>Exclusions</h3>
+                  <div class="muted">Exclude folders, files, or stems from scans.</div>
+                </div>
+                <div class="exclusions-summary">
+                  <div class="row">
+                    <div><strong>Exclusions</strong></div>
+                    <div class="spacer"></div>
+                    <button id="btn_exclusions" type="button">Configure...</button>
+                  </div>
+                  <div id="exclusions_summary" class="muted">Dirs: 0 • Files: 0 • Custom: 0</div>
+                  <div class="muted small">Open the exclusions menu to add/remove with Finder.</div>
+                </div>
+                <label class="filters-block-label" for="s_always_docs">Always-Include Docs (Stems, one per
+                  line):</label>
+                <textarea id="s_always_docs" rows="4" class="code-font"></textarea>
+                <div class="filters-actions">
+                  <button id="btn_reset_always_docs" type="button">Reset Always-Include Defaults</button>
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Date Range</h3>
+                  <div class="muted">Limit results by file date.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="f_date_after">Date After:</label>
+                  <input id="f_date_after" type="date">
+
+                  <label for="f_date_before">Date Before:</label>
+                  <input id="f_date_before" type="date">
+
+                  <label></label>
+                  <button id="btn_clear_dates" type="button">Clear</button>
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Sorting</h3>
+                  <div class="muted">Choose how results are ordered.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="sort_by">Sort by:</label>
+                  <select id="sort_by">
+                    <option value="name">Name</option>
+                    <option value="size">Size</option>
+                    <option value="date">Date</option>
+                    <option value="tokens">Tokens</option>
+                    <option value="token_density">Token density</option>
+                  </select>
+
+                  <label></label>
+                  <label class="chk-label"><input id="sort_desc" type="checkbox"> Descending</label>
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Scan Options</h3>
+                  <div class="muted">Control depth and size limits.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="f_ignore_binary">Ignore binary:</label>
+                  <label class="chk-label"><input id="f_ignore_binary" type="checkbox"> Skip binary files</label>
+
+                  <label for="f_max_mb">Max file size (MB):</label>
+                  <input id="f_max_mb" type="number" min="0" step="0.1" placeholder="0 = no limit">
+
+                  <label for="f_max_depth">Max depth:</label>
+                  <input id="f_max_depth" type="number" min="0" placeholder="0 = no limit">
+
+                  <label for="f_follow_symlinks">Follow symlinks:</label>
+                  <label class="chk-label"><input id="f_follow_symlinks" type="checkbox"> Follow symlinks</label>
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Git &amp; Xcode</h3>
+                  <div class="muted">Use Git history and Xcode targets.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="f_use_git">Use git files:</label>
+                  <label class="chk-label"><input id="f_use_git" type="checkbox"> Git tracked</label>
+
+                  <label for="f_git_untracked">Include untracked:</label>
+                  <label class="chk-label"><input id="f_git_untracked" type="checkbox"> Include untracked</label>
+
+                  <label for="f_git_since">Git since:</label>
+                  <input id="f_git_since" type="text" placeholder="HEAD~1">
+
+                  <label for="f_git_until">Until:</label>
+                  <input id="f_git_until" type="text" value="HEAD">
+
+                  <label></label>
+                  <label class="chk-label"><input id="f_git_changed" type="checkbox"> Only changed</label>
+
+                  <label for="f_ex_vendored">Exclude vendored:</label>
+                  <label class="chk-label"><input id="f_ex_vendored" type="checkbox"> Exclude vendored</label>
+
+                  <label for="f_xcode_target">Xcode target:</label>
+                  <div class="row">
+                    <select id="f_xcode_target">
+                      <option value="">(All)</option>
+                    </select>
+                    <button id="btn_reload_xcode" type="button">Reload Targets</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Noise Filters</h3>
+                  <div class="muted">Hide common build artifacts.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="f_ex_node">Exclude node_modules:</label>
+                  <label class="chk-label"><input id="f_ex_node" type="checkbox" checked> node_modules</label>
+
+                  <label for="f_ex_ios">Exclude iOS noise:</label>
+                  <label class="chk-label"><input id="f_ex_ios" type="checkbox" checked> iOS build noise</label>
+
+                  <label for="f_ex_py">Exclude Python noise:</label>
+                  <label class="chk-label"><input id="f_ex_py" type="checkbox"> Python artifacts</label>
+
+                  <label for="f_ex_java">Exclude Java/Gradle:</label>
+                  <label class="chk-label"><input id="f_ex_java" type="checkbox"> Gradle noise</label>
+
+                  <label for="f_ex_web">Exclude web build:</label>
+                  <label class="chk-label"><input id="f_ex_web" type="checkbox"> Web build output</label>
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Watch</h3>
+                  <div class="muted">Auto-refresh the file list while scanning.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="watch_toggle">Watch changes:</label>
+                  <label class="chk-label"><input id="watch_toggle" type="checkbox"> Enable watch</label>
+
+                  <label for="watch_int">Interval (s):</label>
+                  <input id="watch_int" type="number" min="1" value="3">
+                </div>
+              </div>
+
+              <div class="filters-card">
+                <div class="filters-card-header">
+                  <h3>Duplicates</h3>
+                  <div class="muted">Hide or mark duplicate files.</div>
+                </div>
+                <div class="filters-toggle-grid">
+                  <label class="chk-label"><input id="f_hide_dups" type="checkbox"> Hide duplicates</label>
+                  <label class="chk-label"><input id="f_mark_dups" type="checkbox" checked> Mark duplicates</label>
+                  <label class="chk-label small">Hash KB:
+                    <input id="f_dup_kb" type="number" min="0" max="4096" step="4" value="256" style="width:70px"
+                      title="Max KB for duplicate hash window (0 = default)" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab_ui" class="tab-pane">
+            <div class="ui-layout">
+              <div class="ui-card">
+                <div class="ui-card-header">
+                  <h3>Typography</h3>
+                  <div class="muted">Control default sizing for the interface.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="s_font">Font Size:</label>
+                  <input id="s_font" type="number" min="8" max="24" data-settings-preview>
+                </div>
+              </div>
+
+              <div class="ui-card">
+                <div class="ui-card-header">
+                  <h3>Appearance</h3>
+                  <div class="muted">Adjust contrast and density.</div>
+                </div>
+                <div class="ui-toggle-grid">
+                  <label class="chk-label"><input id="s_contrast" type="checkbox"
+                      data-settings-preview> High Contrast</label>
+                  <label class="chk-label"><input id="s_compact" type="checkbox"
+                      data-settings-preview> Compact Mode</label>
+                </div>
+              </div>
+
+              <div class="ui-card">
+                <div class="ui-card-header">
+                  <h3>Watch Behavior</h3>
+                  <div class="muted">Tune refresh cadence and sampling.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="s_watch_debounce">Watch Debounce (ms):</label>
+                  <input id="s_watch_debounce" type="number" step="100">
+
+                  <label for="s_watch_sample_limit">Watch Sample Limit:</label>
+                  <input id="s_watch_sample_limit" type="number" step="100" min="100">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab_output" class="tab-pane">
+            <div class="output-layout">
+              <div class="output-card">
+                <div class="output-card-header">
+                  <h3>AI Summarization</h3>
+                  <div class="muted">Provider, retrieval, and batching options.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="s_embed">Provider:</label>
+                  <select id="s_embed">
+                    <option value="groq">Groq</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="none">None</option>
+                  </select>
+
+                  <label for="s_retr">Retrieval Backend:</label>
+                  <select id="s_retr">
+                    <option value="embeddings">Embeddings</option>
+                    <option value="file_search">File search</option>
+                  </select>
+
+                  <label for="s_sum_limit">Summary Token Limit:</label>
+                  <input id="s_sum_limit" type="number" placeholder="0 = unlimited">
+
+                  <label for="s_workers">Groq Workers:</label>
+                  <input id="s_workers" type="number" placeholder="0 = auto">
+
+                  <label for="s_timeout">Request Timeout (s):</label>
+                  <input id="s_timeout" type="number" min="1" step="0.5" placeholder="120">
+
+                  <label for="s_retry_budget">Summary Retries:</label>
+                  <input id="s_retry_budget" type="number" min="0" step="1" placeholder="2">
+                </div>
+                <div class="output-toggle-grid">
+                  <label class="chk-label"><input id="s_strict" type="checkbox"> Groq Strict Mode</label>
+                  <label class="chk-label"><input id="s_strict_summary_required" type="checkbox"> Require summaries when requested</label>
+                  <label class="chk-label" title="Interactive folder, repo, and merge summaries always use threaded requests. Batch stays available only to offline audit and perf tooling."><input id="s_use_batch" type="checkbox" disabled> Batch API (offline only)</label>
+                  <label class="chk-label" title="Interactive folder, repo, and merge summaries always use threaded requests. Batch stays available only to offline audit and perf tooling."><input id="s_batch_progress" type="checkbox" disabled> Batch progress (offline only)</label>
+                </div>
+                <div class="muted">Interactive JSUI summary flows always run without the Batch API. Timeout and retry settings apply to live summary requests.</div>
+              </div>
+
+              <div class="output-card">
+                <div class="output-card-header">
+                  <h3>Summaries</h3>
+                  <div class="muted">Defaults, change detection, and overrides.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="s_summary_default_mode">Default mode:</label>
+                  <select id="s_summary_default_mode">
+                    <option value="CODE">Code</option>
+                    <option value="SKELETON">Skeleton</option>
+                    <option value="API_SURFACE">API surface</option>
+                    <option value="SIGNATURES">Signatures</option>
+                    <option value="CODE_PLUS_SKELETON">Code + skeleton</option>
+                    <option value="SUMMARY_SHORT">Summary (short)</option>
+                    <option value="SUMMARY_LONG">Summary (long)</option>
+                    <option value="SUMMARY_SHORT_PLUS_SKELETON">Short summary + skeleton</option>
+                    <option value="SUMMARY_LONG_PLUS_SKELETON">Long summary + skeleton</option>
+                    <option value="CODE_PLUS_SUMMARY_SHORT_PLUS_SKELETON">Code + short summary + skeleton</option>
+                    <option value="CODE_PLUS_SUMMARY_LONG_PLUS_SKELETON">Code + long summary + skeleton</option>
+                    <option value="CODE_PLUS_SHORT">Code + short</option>
+                    <option value="CODE_PLUS_LONG">Code + long</option>
+                  </select>
+
+                  <label for="s_summary_change_strategy">Change detection:</label>
+                  <select id="s_summary_change_strategy">
+                    <option value="mtime_size">mtime + size</option>
+                    <option value="sha256">SHA256</option>
+                    <option value="git">git</option>
+                  </select>
+
+                  <label for="s_summary_prompt_version">Prompt version:</label>
+                  <input id="s_summary_prompt_version" type="number" min="1" step="1">
+
+                  <label for="btn_reset_modes">Per-file modes:</label>
+                  <button id="btn_reset_modes" type="button">Reset overrides</button>
+                </div>
+                <div class="output-toggle-grid">
+                  <label class="chk-label"><input id="s_auto_refresh_summaries" type="checkbox"> Auto-refresh in
+                    Watch</label>
+                  <label class="chk-label"><input id="s_summarize_vendored" type="checkbox"> Summarize vendored</label>
+                  <label class="chk-label"><input id="s_fallback_to_code" type="checkbox"> Fallback to code on summary
+                    error</label>
+                </div>
+              </div>
+
+              <div class="output-card output-card-wide">
+                <div class="output-card-header">
+                  <h3>Merge Output</h3>
+                  <div class="muted">Structure and formatting for merged results.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="merge_content_mode">Content Mode:</label>
+                  <select id="merge_content_mode">
+                    <option value="code_only">Code only</option>
+                    <option value="skeleton_only">Skeleton only</option>
+                    <option value="code_plus_skeleton">Code + skeleton</option>
+                    <option value="code_plus_short_plus_skeleton">Code + short summary + skeleton</option>
+                    <option value="code_plus_long_plus_skeleton">Code + long summary + skeleton</option>
+                    <option value="code_plus_short">Code + short summary</option>
+                    <option value="code_plus_long">Code + long summary</option>
+                    <option value="short_only">Short summary only</option>
+                    <option value="long_only">Long summary only</option>
+                    <option value="short_plus_skeleton">Short summary + skeleton</option>
+                    <option value="long_plus_skeleton">Long summary + skeleton</option>
+                  </select>
+
+                  <label for="merge_structure">Structure mode:</label>
+                  <select id="merge_structure">
+                    <option value="single">Single file</option>
+                    <option value="multiple">Split into N files</option>
+                    <option value="token_split">Split by token limit</option>
+                  </select>
+
+                  <label for="merge_split_n">Split N:</label>
+                  <input id="merge_split_n" type="number" min="1" value="5">
+
+                  <label for="merge_token_limit">Token limit:</label>
+                  <input id="merge_token_limit" type="number" min="1000" value="1048576">
+
+                  <label for="merge_repo_summary_mode">Repo summary mode:</label>
+                  <select id="merge_repo_summary_mode">
+                    <option value="quick">Quick</option>
+                    <option value="full">Full</option>
+                  </select>
+                </div>
+                <div class="output-toggle-grid">
+                  <label class="chk-label"><input id="merge_use_plan" type="checkbox" checked disabled> Use plan
+                    (per-file modes)</label>
+                  <label class="chk-label"><input id="toggle_final_footer" type="checkbox"> Footer final only</label>
+                  <label class="chk-label"><input id="opt_tree" type="checkbox"> Include file tree</label>
+                  <label class="chk-label"><input id="merge_include_repo_summary" type="checkbox"> Include repo summary</label>
+                  <label class="chk-label"><input id="opt_manifest" type="checkbox"> JSON manifest</label>
+                  <label class="chk-label"><input id="opt_fences" type="checkbox"> Markdown fences</label>
+                  <label class="chk-label"><input id="opt_toc" type="checkbox"> Markdown TOC</label>
+                  <label class="chk-label"><input id="opt_strip" type="checkbox"> Remove empty</label>
+                  <label class="chk-label"><input id="opt_enum" type="checkbox"> Enumerate lines</label>
+                </div>
+              </div>
+
+              <div class="output-card output-card-wide">
+                <div class="output-card-header">
+                  <h3>Prompt Template</h3>
+                  <div class="muted">Use {merged_content} to insert merged output.</div>
+                </div>
+                <label class="output-block-label" for="merge_prompt_template">Template:</label>
+                <textarea id="merge_prompt_template" rows="4" class="code-font"
+                  placeholder="System prompt... {merged_content} ..."></textarea>
+              </div>
+
+              <div class="output-card">
+                <div class="output-card-header">
+                  <h3>Custom Labels</h3>
+                  <div class="muted">Override file markers and tree headers.</div>
+                </div>
+                <div class="form-grid">
+                  <label for="s_custom_start">Start Label:</label>
+                  <input id="s_custom_start" type="text" placeholder="======= START OF FILE: {file_display} =======">
+
+                  <label for="s_custom_end">End Label:</label>
+                  <input id="s_custom_end" type="text" placeholder="======= END OF FILE: {file_display} =======">
+
+                  <label for="s_custom_tree_start">Tree Start:</label>
+                  <input id="s_custom_tree_start" type="text" placeholder="======= FILE TREE =======">
+
+                  <label for="s_custom_tree_end">Tree End:</label>
+                  <input id="s_custom_tree_end" type="text" placeholder="======= END OF FILE TREE =======">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab_tools" class="tab-pane">
+            <div class="tools-layout">
+              <div class="tools-card tools-card-wide">
+                <div class="tools-card-header">
+                  <h3>Quick Tools</h3>
+                  <div class="muted">Run diagnostics and quick summaries.</div>
+                </div>
+                <div class="tools-actions">
+                  <button id="verify_tokens" type="button">Verify Tokens</button>
+                  <button id="btn_diag_run" type="button">Run Diagnostics</button>
+                  <button id="btn_summarize_sel" type="button">Summarize Selected</button>
+                  <button id="btn_summarizer_logs" type="button">Summarizer Logs</button>
+                </div>
+                <div class="tools-output-stack">
+                  <pre id="verify_out" class="code-font tools-output"></pre>
+                  <pre id="summarize_out" class="code-font tools-output"></pre>
+                </div>
+              </div>
+
+              <div class="tools-card tools-card-wide">
+                <div class="tools-card-header">
+                  <h3>Prune</h3>
+                  <div class="muted">Trim results by ranking and budget.</div>
+                </div>
+                <div class="form-grid">
+                  <label>Goal:</label>
+                  <input id="prune_goal" type="text" placeholder="Describe the pruning goal">
+                  <label class="chk-label">
+                    <input id="prune_execute_workspace" type="checkbox">
+                    Run repository code during verification (trusted workspaces only)
+                  </label>
+
+                  <label>Ranking:</label>
+                  <select id="pr_rank">
+                    <option value="hybrid">Hybrid</option>
+                    <option value="keywords">Keywords</option>
+                    <option value="embeddings">Embeddings</option>
+                    <option value="hybrid_rerank">Hybrid + rerank</option>
+                  </select>
+
+                  <label>Engine:</label>
+                  <select id="pr_engine">
+                    <option value="local">Local</option>
+                    <option value="agent">Agent</option>
+                  </select>
+
+                  <label>Neighbors:</label>
+                  <select id="pr_neighbors">
+                    <option value="same_package">Same package</option>
+                    <option value="same_file">Same file</option>
+                    <option value="auto">Auto</option>
+                    <option value="none">None</option>
+                  </select>
+
+                  <label>Mode:</label>
+                  <select id="pr_mode">
+                    <option value="compact">Compact</option>
+                    <option value="safe">Safe</option>
+                  </select>
+
+                  <label>Token Budget:</label>
+                  <input id="pr_budget" type="number" value="45000">
+
+                  <label>Output File:</label>
+                  <div class="input-with-btn">
+                    <input id="pr_output" type="text" placeholder="pruned_result.txt">
+                    <button id="pr_output_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label></label>
+                  <label class="chk-label"><input id="pr_dryrun" type="checkbox"> Dry run</label>
+                </div>
+                <div class="tools-actions">
+                  <button id="start_prune" type="button">Start Prune</button>
+                  <button id="check_prune" type="button">Check Status</button>
+                </div>
+                <pre id="prune_out" class="code-font tools-output"></pre>
+              </div>
+
+              <div class="tools-card tools-card-wide">
+                <div class="tools-card-header">
+                  <h3>Context Pack</h3>
+                  <div class="muted">Build subsystem or audit packs from the manifest.</div>
+                </div>
+                <div class="form-grid">
+                  <label>Subsystem:</label>
+                  <div class="input-with-btn">
+                    <select id="ctx_pack_subsystem"></select>
+                    <button id="ctx_pack_refresh" type="button">Refresh</button>
+                  </div>
+
+                  <label>Mode:</label>
+                  <select id="ctx_pack_mode">
+                    <option value="subsystem">Subsystem</option>
+                    <option value="audit">Audit</option>
+                  </select>
+
+                  <label>Output File:</label>
+                  <div class="input-with-btn">
+                    <input id="ctx_pack_output" type="text" placeholder="context_pack.txt">
+                    <button id="ctx_pack_output_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label></label>
+                  <label class="chk-label"><input id="ctx_pack_save" type="checkbox" checked> Save to file</label>
+
+                  <label></label>
+                  <label class="chk-label"><input id="ctx_pack_copy" type="checkbox"> Copy to clipboard</label>
+                </div>
+                <div class="tools-actions">
+                  <button id="ctx_pack_run" type="button">Build Pack</button>
+                </div>
+                <pre id="ctx_pack_out" class="code-font tools-output"></pre>
+              </div>
+
+              <div class="tools-card">
+                <div class="tools-card-header">
+                  <h3>Pair Codebases</h3>
+                  <div class="muted">Combine A and B into a paired output.</div>
+                </div>
+                <div class="form-grid">
+                  <label>Source A:</label>
+                  <div class="input-with-btn">
+                    <input id="pair_a" type="text" placeholder="/path/to/A">
+                    <button id="pair_a_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label>Source B:</label>
+                  <div class="input-with-btn">
+                    <input id="pair_b" type="text" placeholder="/path/to/B">
+                    <button id="pair_b_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label>Dest:</label>
+                  <div class="input-with-btn">
+                    <input id="pair_dest" type="text" placeholder="/path/to/output" readonly>
+                    <button id="pair_dest_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label>Label A:</label>
+                  <input id="pair_label_a" type="text" placeholder="Label for A">
+
+                  <label>Label B:</label>
+                  <input id="pair_label_b" type="text" placeholder="Label for B">
+
+                  <label></label>
+                  <label class="chk-label"><input id="pair_keep" type="checkbox" checked> Keep structure</label>
+
+                  <label></label>
+                  <label class="chk-label"><input id="pair_selected" type="checkbox"> Pair selected from A</label>
+                </div>
+                <div class="tools-actions">
+                  <button id="pair_run" type="button">Pair</button>
+                </div>
+              </div>
+
+              <div class="tools-card">
+                <div class="tools-card-header">
+                  <h3>Pair + AI</h3>
+                  <div class="muted">Generate a report between two sources.</div>
+                </div>
+                <div class="form-grid">
+                  <label>Source A:</label>
+                  <div class="input-with-btn">
+                    <input id="pair_ai_a" type="text" placeholder="/path/to/A">
+                    <button id="pair_ai_a_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label>Source B:</label>
+                  <div class="input-with-btn">
+                    <input id="pair_ai_b" type="text" placeholder="/path/to/B">
+                    <button id="pair_ai_b_browse" type="button">Browse...</button>
+                  </div>
+                </div>
+                <div class="tools-actions">
+                  <button id="pair_ai_run" type="button">Run Pair+AI</button>
+                  <button id="pair_ai_save" type="button">Save Report...</button>
+                </div>
+                <pre id="pair_ai_out" class="code-font tools-output"></pre>
+              </div>
+
+              <div class="tools-card">
+                <div class="tools-card-header">
+                  <h3>Restore from Merged</h3>
+                  <div class="muted">Split a merged file back into files.</div>
+                </div>
+                <div class="form-grid">
+                  <label>Merged File:</label>
+                  <div class="input-with-btn">
+                    <input id="rest_src" type="text" placeholder="/path/to/merged.txt">
+                    <button id="rest_src_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label>Dest:</label>
+                  <div class="input-with-btn">
+                    <input id="rest_dest" type="text" placeholder="/path/to/output" readonly>
+                    <button id="rest_dest_browse" type="button">Browse...</button>
+                  </div>
+
+                  <label>Start Label:</label>
+                  <input id="rest_start_label" type="text" placeholder="======= START OF FILE: {file_display} =======">
+
+                  <label>End Label:</label>
+                  <input id="rest_end_label" type="text" placeholder="======= END OF FILE: {file_display} =======">
+                </div>
+                <div class="tools-actions">
+                  <button id="rest_run" type="button">Restore</button>
+                </div>
+              </div>
+
+              <div class="tools-card">
+                <div class="tools-card-header">
+                  <h3>Tool Output</h3>
+                  <div class="muted">Status messages for pairing and restore.</div>
+                </div>
+                <pre id="tools_out" class="code-font tools-output"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal_footer">
+        <button type="button" data-settings-action="load">Revert / Load</button>
+        <div class="spacer"></div>
+        <button type="button" data-settings-action="close">Cancel</button>
+        <button type="button" class="btn-primary" data-settings-action="save">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="exclusions_modal" class="modal" style="display:none" role="dialog" aria-modal="true"
+    aria-labelledby="exclusions_title">
+    <div class="modal_inner exclusions-modal-inner resizable">
+      <div class="modal_header">
+        <div id="exclusions_title" class="modal_title">Configure Exclusions</div>
+        <button id="exclusions_close" type="button" class="btn-icon" title="Close">×</button>
+      </div>
+
+      <div class="modal_body exclusions-body">
+        <div class="tabs-nav">
+          <button id="ex_tab_dirs_btn" type="button" class="tab-btn active">Directories</button>
+          <button id="ex_tab_files_btn" type="button" class="tab-btn">Files</button>
+          <button id="ex_tab_custom_btn" type="button" class="tab-btn">Custom</button>
+        </div>
+
+        <div class="tabs-content">
+          <div id="ex_tab_dirs" class="tab-pane active">
+            <div class="exclusions-pane">
+              <label>Excluded Directories:</label>
+              <select id="ex_dirs_list" class="code-font exclusion-list" size="12" multiple></select>
+              <div class="row mt-2 exclusions-actions">
+                <button id="ex_dirs_add" type="button">Add...</button>
+                <button id="ex_dirs_remove" type="button">Remove</button>
+                <button id="ex_dirs_reset" type="button">Reset to Default</button>
+              </div>
+              <div class="muted small">Directory names apply anywhere; full paths are also supported.</div>
+            </div>
+          </div>
+
+          <div id="ex_tab_files" class="tab-pane">
+            <div class="exclusions-pane">
+              <label>Excluded Files:</label>
+              <select id="ex_files_list" class="code-font exclusion-list" size="12" multiple></select>
+              <div class="row mt-2 exclusions-actions">
+                <button id="ex_files_add" type="button">Add...</button>
+                <button id="ex_files_remove" type="button">Remove</button>
+                <button id="ex_files_reset" type="button">Reset to Default</button>
+              </div>
+              <div class="muted small">File names apply anywhere; full paths are also supported.</div>
+            </div>
+          </div>
+
+          <div id="ex_tab_custom" class="tab-pane">
+            <div class="exclusions-pane">
+              <label>Custom Excluded (Persisted):</label>
+              <select id="ex_custom_list" class="code-font exclusion-list" size="12" multiple></select>
+              <div class="row mt-2 exclusions-actions">
+                <button id="ex_custom_add" type="button">Add...</button>
+                <button id="ex_custom_remove" type="button">Remove</button>
+                <button id="ex_custom_clear" type="button">Clear All</button>
+              </div>
+              <div class="muted small">Custom excludes are stored relative to the current source folder when possible.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal_footer">
+        <button id="exclusions_cancel" type="button">Cancel</button>
+        <div class="spacer"></div>
+        <button id="exclusions_save" type="button" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard-container">
+    <!-- 1. Source Directory -->
+    <div class="dash-section section-card">
+      <div class="section-title">Source Directory</div>
+      <div class="row">
+        <input id="last_directory" type="text" class="path-input" />
+        <div class="spacer"></div>
+        <button id="theme_toggle" type="button" class="btn-icon" title="Toggle light/dark theme">🌓</button>
+        <button id="btn_open_full_ui" type="button" title="Open full UI in a new tab">Open Web UI 🚀</button>
+        <button id="btn_new_window" type="button" title="Open a new window">New Window</button>
+        <button id="btn_browse" type="button">Browse...</button>
+      </div>
+    </div>
+
+    <!-- 2. File Types -->
+    <div class="dash-section section-card">
+      <div class="section-title">File Types</div>
+      <div class="row">
+        <label class="chk-label"><input id="include_all" type="checkbox" checked> All Extensions</label>
+        <button id="btn_add_manual" type="button">Add files/folders...</button>
+        <button id="do_scan" type="button">Scan Files</button>
+        <button id="btn_settings" type="button" title="Open full settings">Settings...</button>
+      </div>
+    </div>
+
+    <!-- 3. Filter & Sorting -->
+    <div class="dash-section section-card">
+      <div class="section-title">Filter & Sorting</div>
+      <div class="row" style="flex-wrap:wrap">
+        <label class="chk-label"><input id="toggle_totals" type="checkbox"> Show folder totals columns</label>
+        <label class="chk-label"><input id="toggle_bytes_footer" type="checkbox" checked> Show bytes in footer</label>
+        <label class="chk-label"><input id="toggle_density" type="checkbox"> Show token density column</label>
+        <span>View:</span>
+        <label class="chk-label"><input id="view_mode_hierarchy" type="radio" name="view_mode_radio" value="hierarchy"
+            checked> Hierarchy</label>
+        <label class="chk-label"><input id="view_mode_flat" type="radio" name="view_mode_radio" value="flat">
+          Flat</label>
+        <select id="view_mode" style="display:none">
+          <option value="hierarchy">Hierarchy</option>
+          <option value="flat">Flat</option>
+        </select>
+      </div>
+      <div class="row mt-2 filter-summary-row">
+        <span class="muted">Visibility:</span>
+        <select id="visibility_mode">
+          <option value="filters">Respect filters</option>
+          <option value="all">Show everything (ignore filters/excludes)</option>
+        </select>
+        <button id="btn_reset_filters" type="button">Reset Filters</button>
+        <button id="btn_filter_audit" type="button">Audit Filters</button>
+      </div>
+      <div class="row mt-2 filter-summary-row">
+        <span class="muted">Active filters:</span>
+        <div id="filters_summary" class="filter-summary-items"></div>
+      </div>
+    </div>
+
+    <!-- 4. Token / Size Range -->
+    <div class="dash-section section-card">
+      <div class="section-title">Token / Size Range</div>
+      <div class="row" style="flex-wrap:wrap">
+        <label>Tokens</label>
+        <input id="f_token_min" type="number" min="0" max="10000000" step="100" value="0" style="width:80px">
+        <span>-</span>
+        <input id="f_token_max" type="number" min="0" max="10000000" step="100" value="10000000" style="width:110px">
+        <label>KB</label>
+        <input id="f_size_min" type="number" min="0" max="1000000" step="0.1" value="0.0" style="width:90px">
+        <span>-</span>
+        <input id="f_size_max" type="number" min="0" max="1000000" step="0.1" value="1000000.0" style="width:110px">
+        <button id="btn_reset_tokens" type="button">Reset</button>
+        <button type="button" class="pill token-max" data-value="128000">GPT-4 (128k)</button>
+        <button type="button" class="pill token-max" data-value="200000">Claude (200k)</button>
+      </div>
+      <div class="row mt-2">
+        <label class="chk-label"><input id="f_apply_token_transforms" type="checkbox"> Apply token filters to
+          transformed tokens</label>
+      </div>
+    </div>
+
+    <!-- 5. Files to Merge -->
+    <div class="dash-section section-card list-area flex-grow">
+      <div class="section-title">Files to Merge</div>
+      <div class="list-toolbar">
+        <button id="btn_cats" type="button">Categories...</button>
+        <button id="btn_collapse" type="button">Collapse All</button>
+        <button id="btn_expand" type="button">Expand All</button>
+        <div class="mode-set-group">
+          <span>Set mode:</span>
+          <select id="mode_scope">
+            <option value="selected">Selected</option>
+            <option value="visible">All visible</option>
+          </select>
+          <select id="mode_target">
+            <option value="CODE">Code</option>
+            <option value="SKELETON">Skeleton</option>
+            <option value="API_SURFACE">API surface</option>
+            <option value="SIGNATURES">Signatures</option>
+            <option value="CODE_PLUS_SKELETON">Code + skeleton</option>
+            <option value="SUMMARY_SHORT">Summary (short)</option>
+            <option value="SUMMARY_LONG">Summary (long)</option>
+            <option value="SUMMARY_SHORT_PLUS_SKELETON">Short summary + skeleton</option>
+            <option value="SUMMARY_LONG_PLUS_SKELETON">Long summary + skeleton</option>
+            <option value="CODE_PLUS_SUMMARY_SHORT_PLUS_SKELETON">Code + short summary + skeleton</option>
+            <option value="CODE_PLUS_SUMMARY_LONG_PLUS_SKELETON">Code + long summary + skeleton</option>
+            <option value="CODE_PLUS_SHORT">Code + short</option>
+            <option value="CODE_PLUS_LONG">Code + long</option>
+            <option value="EXCLUDE">Exclude</option>
+          </select>
+          <button id="btn_apply_mode" type="button">Apply</button>
+        </div>
+      </div>
+
+      <div class="row filter-row" style="flex-wrap:wrap">
+        <label>Pattern:</label>
+        <input id="f_name_pattern" type="text" style="width:180px" />
+        <button id="btn_clear_pattern" type="button">Clear</button>
+        <label class="chk-label"><input id="f_name_glob" type="checkbox"> Glob</label>
+
+        <label>Content contains:</label>
+        <input id="f_content" type="text" style="width:180px" />
+        <label class="chk-label"><input id="f_content_regex" type="checkbox"> Regex</label>
+        <label class="chk-label"><input id="f_content_case" type="checkbox"> Case</label>
+        <label class="chk-label small">KB: <input id="f_content_kb" type="number" min="4" max="4096" step="4"
+            value="256" style="width:70px" title="Max KB" /></label>
+      </div>
+
+      <div class="table-scroll-container">
+        <table id="files_tbl" aria-label="Scanned files">
+          <thead>
+            <tr>
+              <th data-col="rel_path">Path</th>
+              <th data-col="mode">Mode</th>
+              <th data-col="ext">Ext</th>
+              <th data-col="size_bytes" class="num">Size (KB)</th>
+              <th data-col="token_count" class="num">Tokens</th>
+              <th data-col="dens" class="num">Tok/KB</th>
+              <th data-col="category">Category</th>
+              <th data-col="tok_total" class="num">TokΣ</th>
+              <th data-col="kb_total" class="num">KBΣ</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="row list-actions">
+        <button id="btn_remove_sel" type="button">Remove Selected</button>
+        <button id="btn_clear_all" type="button">Clear All</button>
+        <button id="btn_keep_only" type="button">Keep only from list...</button>
+        <button id="btn_restore" type="button">Restore Full List</button>
+      </div>
+    </div>
+
+    <!-- 6. Output File -->
+    <div class="dash-section section-card output-section">
+      <div class="section-title">Output File</div>
+      <div class="row">
+        <input id="output_file" type="text" class="path-input" />
+        <div class="spacer"></div>
+        <button id="btn_browse_out" type="button">Browse...</button>
+      </div>
+      <div class="row mt-2">
+        <label class="chk-label"><input id="use_folder_name" type="checkbox"> Use root folder name</label>
+        <label class="chk-label"><input id="append_date" type="checkbox"> Append date and time</label>
+      </div>
+    </div>
+
+    <!-- 7. Action Bar -->
+    <div class="dash-section action-bar">
+      <div class="row" style="flex-wrap:wrap">
+        <label class="chk-label"><input id="copy_clipboard" type="checkbox"> Copy to Clipboard</label>
+        <select id="summary_scope" title="Refresh summaries scope">
+          <option value="visible">All summary-mode visible</option>
+          <option value="selected">For selected</option>
+        </select>
+        <button id="btn_refresh_summaries" type="button">Refresh summaries</button>
+        <button id="btn_repo_summary_quick" type="button">Quick Repo Summary</button>
+        <button id="btn_repo_summary_full" type="button">Full Repo Summary</button>
+        <button id="btn_preview_merge" type="button">Preview Merge</button>
+        <button id="btn_copy_merge" type="button">Copy Merge</button>
+        <button id="btn_select_all" type="button">Select All</button>
+        <button id="btn_merge" type="button">Run Merge</button>
+        <button id="btn_jobs" type="button">Jobs</button>
+        <button id="btn_session_export" type="button">Export Session</button>
+        <button id="btn_session_import" type="button">Import Session</button>
+      </div>
+      <div class="row mt-2">
+        <a id="download_link" href="#" style="display:none" download>Download</a>
+        <button id="btn_open_output_folder" type="button" style="display:none">Open output folder</button>
+        <button id="btn_copy_chunks" type="button" style="display:none">Copy all chunks</button>
+        <button id="btn_download_folder" type="button" style="display:none">Download folder</button>
+      </div>
+    </div>
+
+    <!-- 8. Status Bar -->
+    <div class="dash-section status-bar">
+      <div class="row">
+        <span id="merge_status">Ready – 0 visible files</span>
+        <div class="spacer"></div>
+        <span id="token_status"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <input id="preset_import_file" type="file" accept=".json,application/json" style="display:none">
+  <input id="session_import_file" type="file" accept=".json,application/json" style="display:none">
+  <div id="ctxmenu" class="ctxmenu" style="display:none" role="menu" aria-hidden="true"></div>
+  <script src="/static/app.js?v=0.1.0"></script>
+</body>
+
+</html>

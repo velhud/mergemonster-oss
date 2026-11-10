@@ -1,0 +1,14 @@
+{
+  "name": "goal_plan",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "include_files": {"type": "array", "items": {"type": "string"}},
+      "include_defs":  {"type": "array", "items": {"type": "string"}},
+      "exclude_globs": {"type": "array", "items": {"type": "string"}},
+      "exclude_exts":  {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["include_files", "include_defs", "exclude_globs", "exclude_exts"],
+    "additionalProperties": false
+  }
+}

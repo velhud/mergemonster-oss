@@ -1,0 +1,11 @@
+{
+  "name": "rerank",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "ordered_paths": {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["ordered_paths"],
+    "additionalProperties": false
+  }
+}

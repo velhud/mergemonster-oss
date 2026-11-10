@@ -1,0 +1,8 @@
+core_shared:
+  - docs/overview.md
+subsystems:
+  - name: service
+    root:
+      - src
+    public_api:
+      - src/service.py

@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    name: Python 3.11 and 3.12 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15-intel]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: |
+            3.11
+            3.12
+      - name: Test, build, and install on each supported Python version
+        shell: bash
+        run: |
+          set -euo pipefail
+          for version in 3.11 3.12; do
+            (
+              echo "::group::CPython $version"
+              run_dir="$RUNNER_TEMP/mergemonster-$version"
+              mkdir -p "$run_dir"
+              export MERGEMONSTER_HOME="$run_dir/state"
+              "python$version" -m venv "$run_dir/dev"
+              source "$run_dir/dev/bin/activate"
+              python --version
+              python -m pip install -e '.[dev,providers]'
+              python tools/smoke_imports.py
+              python tools/import_guard.py
+              python -m ruff check codemerge tests --select F821
+              python -m pytest -q -m 'not live'
+              python tools/smoke_server.py
+              python -m build --outdir "$run_dir/dist"
+              python - "$run_dir/dist" <<'PY'
+          import sys
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path(sys.argv[1]).glob("*.whl"))
+          with ZipFile(wheel) as archive:
+              paths = set(archive.namelist())
+              required = {
+                  "codemerge/desktop.py",
+                  "codemerge/jsui/static/index.html",
+                  "codemerge/jsui/static/app.js",
+                  "codemerge/summarizer/prompts/system.md",
+                  "codemerge/prune/assets/schema_prune_plan.json",
+                  "codemerge/core/data/o200k_base.tiktoken.gz",
+              }
+              metadata_path = next(path for path in paths if path.endswith(".dist-info/METADATA"))
+              licenses = metadata_path.removesuffix("METADATA") + "licenses/"
+              required.update({
+                  licenses + "LICENSE",
+                  licenses + "LICENSES/gpt-oss-Apache-2.0.txt",
+                  licenses + "LICENSES/tiktoken-MIT.txt",
+              })
+              missing = sorted(required - paths)
+              unexpected = sorted(path for path in paths if path.startswith("tests/"))
+              if missing or unexpected:
+                  raise SystemExit(f"missing={missing}; unexpected={unexpected}")
+              metadata = archive.read(metadata_path).decode("utf-8")
+              if "License-Expression: MIT AND Apache-2.0" not in metadata:
+                  raise SystemExit("wheel metadata does not report the expected license expression")
+          print(f"Inspected {wheel.name}: required runtime assets present.")
+          PY
+              python -m venv "$run_dir/wheel"
+              "$run_dir/wheel/bin/python" -m pip install "$run_dir"/dist/*.whl
+              mkdir "$run_dir/outside"
+              cd "$run_dir/outside"
+              export PATH="$run_dir/wheel/bin:$PATH" MERGEMONSTER_HOME="$run_dir/wheel-state"
+              mergemonster --help
+              mergemonster --version
+              python "$GITHUB_WORKSPACE/tools/smoke_imports.py"
+              python "$GITHUB_WORKSPACE/tools/smoke_server.py"
+              python "$GITHUB_WORKSPACE/examples/run_offline_demo.py" --scratch "$run_dir/outside"
+              echo "::endgroup::"
+            )
+          done
+      - name: Collect built release distributions
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: mergemonster-python-dist-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/mergemonster-3.11/dist/*
+            ${{ runner.temp }}/mergemonster-3.12/dist/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
