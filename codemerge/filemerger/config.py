@@ -59,7 +59,7 @@ def _prepare_default_config() -> str:
     target = Path(_default_config_path())
     if target.exists():
         return str(target)
-    for name in ("pythonmerge_config.json",):
+    for name in ("pythonmerge_config.json", "codemerge_config.json"):
         source = target.with_name(name)
         if not source.is_file():
             continue

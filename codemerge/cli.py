@@ -11,7 +11,7 @@ def _version() -> str:
     try:
         return version("mergemonster")
     except PackageNotFoundError:
-        return "0.1.0"
+        return "0.1.1"
 
 
 def _parser() -> argparse.ArgumentParser:

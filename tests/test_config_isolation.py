@@ -48,6 +48,23 @@ def test_project_switch_does_not_rebind_to_repo_local_config(tmp_path: Path) -> 
     assert ctx.config.get_config()["last_directory"] == str(project_root.resolve())
 
 
+def test_defaults_import_codemerge_settings_once(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("MERGEMONSTER_HOME", str(tmp_path))
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    old_settings = tmp_path / "codemerge_config.json"
+    original = '{"show_totals_columns": true}'
+    old_settings.write_text(original, encoding="utf-8")
+
+    config = AppConfig()
+
+    assert config.config_file == str(tmp_path / "settings.json")
+    assert config.get_config()["show_totals_columns"] is True
+    assert old_settings.read_text(encoding="utf-8") == original
+    config.update_config({"show_totals_columns": False})
+    assert AppConfig().get_config()["show_totals_columns"] is False
+    assert old_settings.read_text(encoding="utf-8") == original
+
+
 def test_settings_upgrade_preserves_previous_release_state(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("MERGEMONSTER_HOME", str(tmp_path))
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)

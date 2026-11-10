@@ -1561,40 +1561,25 @@ async function browseOutputFile() {
       }
     }
   } catch (_) { /* fall back */ }
-  const _parentDir = (path) => {
-    const raw = String(path || '').trim();
-    if (!raw) return '';
-    const idx = Math.max(raw.lastIndexOf('/'), raw.lastIndexOf('\\'));
-    if (idx <= 0) return '';
-    return raw.slice(0, idx);
-  };
-  const _resolvePickerStart = async () => {
-    const value = String(cur || '').trim();
-    if (!value) return lastDir || '';
-    if (/[\\\/]$/.test(value)) return value;
-    const metadata = await pathExists(value);
-    if (metadata.exists && metadata.is_dir) return value;
-    if (metadata.exists && metadata.is_file) return _parentDir(value) || lastDir || '';
-    const tail = value.split(/[\\\/]/).pop() || '';
-    const looksLikeFile = tail.includes('.') && tail !== '.' && tail !== '..';
-    if (looksLikeFile) return _parentDir(value) || lastDir || '';
-    return value;
-  };
-  const startPath = await _resolvePickerStart();
+  const value = cur.trim();
+  const hint = _normalizePathSlashes(value);
+  const metadata = hint && !hint.endsWith('/') ? await pathExists(value) : {};
+  const tail = hint.split('/').pop() || '';
+  const hasFilename = metadata.is_file || (
+    !metadata.is_dir && tail.includes('.') && tail !== '.' && tail !== '..'
+  );
+  const parent = hint.slice(0, hint.lastIndexOf('/') + 1);
   const picked = await _pickPaths({
     allowDirs: true,
     allowFiles: false,
     single: true,
-    path: startPath,
+    path: (hasFilename ? parent : hint) || lastDir,
   });
   if (Array.isArray(picked) && picked.length) {
-    const folder = String(picked[0] || '').replace(/[\\\/]+$/, '');
-    const currentName = String(cur || '').trim().split(/[\\\/]/).pop() || '';
-    const fallbackName = String(computeDefaultOutputPath(lastDir || ''))
-      .split(/[\\\/]/)
-      .pop() || 'merged_files.txt';
-    const fileName = currentName || fallbackName;
-    if (el) el.value = folder ? `${folder}/${fileName}` : fileName;
+    const folder = _normalizePathSlashes(picked[0]);
+    const defaultPath = _normalizePathSlashes(computeDefaultOutputPath(lastDir));
+    const fileName = (hasFilename && tail) || defaultPath.split('/').pop() || 'merged_files.txt';
+    if (el) el.value = folder ? `${_stripTrailingSlashes(folder)}/${fileName}` : fileName;
     await persistOutputPath();
   }
 }
@@ -1625,14 +1610,10 @@ function _escapeRegExp(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function _normalizePathSlashes(value) {
-  return String(value || '').trim().replace(/\\/g, '/').replace(/\/+$/, '');
-}
-
 function _isAutoOutputPath(path, root) {
-  const rawPath = _normalizePathSlashes(path);
+  const rawPath = _stripTrailingSlashes(_normalizePathSlashes(String(path || '').trim()));
   if (!rawPath) return true;
-  const rootNorm = _normalizePathSlashes(root);
+  const rootNorm = _stripTrailingSlashes(_normalizePathSlashes(String(root || '').trim()));
   const rootName = rootNorm ? rootNorm.split('/').filter(Boolean).pop() : '';
   const nameParts = ['merged_files'];
   if (rootName) nameParts.push(rootName);

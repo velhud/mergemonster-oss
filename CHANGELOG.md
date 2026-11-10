@@ -2,6 +2,16 @@
 
 Notable changes for MergeMonster are recorded here.
 
+## 0.1.1
+
+- Import settings from a previous installation when the active state directory
+  has no settings.
+- Keep the filename when choosing a new output directory and generate the
+  configured default filename when the output field contains only a directory.
+- Restore the desktop bridge for native file dialogs and window actions.
+- Remove project-specific scanner defaults and add project-only contributor
+  instructions.
+
 ## 0.1.0
 
 - Introduces a standalone MergeMonster package with a `mergemonster` command

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "codemerge" / "jsui" / "static"
 
@@ -56,3 +60,50 @@ def test_jsui_deeper_workflow_accessibility_contracts():
     assert "data.status === 'cancelled'" in app_js
     assert "job.cancel_supported ? 'cancel_supported'" in app_js
     assert "job.cancellable ? 'cancellable'" in app_js
+
+
+def test_output_picker_keeps_or_generates_filename():
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js is required for this JavaScript test")
+    script = """
+        const assert = require('node:assert/strict');
+        const fs = require('node:fs');
+        const vm = require('node:vm');
+        const controls = {
+          output_file: {value: '/project/build.v2'},
+          last_directory: {value: '/project'},
+          use_folder_name: {checked: true},
+        };
+        const context = vm.createContext({
+          window: {fetch() {}, addEventListener() {}},
+          document: {
+            readyState: 'loading',
+            addEventListener() {},
+            getElementById: id => controls[id] || null,
+            querySelectorAll: () => [],
+          },
+        });
+        vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), context);
+        (async () => {
+          context.persistOutputPath = async () => {};
+          context.pathExists = async () => ({exists: true, is_dir: true});
+          context._pickPaths = async ({path}) => {
+            assert.equal(path, '/project/build.v2');
+            return ['/chosen'];
+          };
+          await context.browseOutputFile();
+          assert.equal(controls.output_file.value, '/chosen/project.txt');
+
+          controls.output_file.value = '/project/custom.txt';
+          context.pathExists = async () => ({exists: true, is_file: true});
+          context._pickPaths = async ({path}) => {
+            assert.equal(path, '/project/');
+            return ['/'];
+          };
+          await context.browseOutputFile();
+          assert.equal(controls.output_file.value, '/custom.txt');
+          assert.equal(context._isAutoOutputPath('  /project/project.txt  ', ' /project/ '), true);
+        })().catch(error => { console.error(error); process.exitCode = 1; });
+    """
+    subprocess.run([node, "-e", script, str(STATIC_DIR / "app.js")], check=True, timeout=10)

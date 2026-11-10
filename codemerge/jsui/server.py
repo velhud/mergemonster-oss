@@ -88,7 +88,7 @@ from ..summarizer.router import (
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 CSRF_HEADER = "X-CodeMerge-CSRF"
 CSRF_EXEMPT_PATHS = frozenset({"/api/health", "/api/session"})
 
